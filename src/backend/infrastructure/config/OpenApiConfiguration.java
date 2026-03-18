@@ -14,10 +14,10 @@ public class OpenApiConfiguration {
     public OpenAPI cleanArchitectureOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("TestJava1 Backend API")
+                        .title("AsterixParser Backend API")
                         .version("v1")
-                        .description("Spring Boot API fuer das React-Frontend in Clean Architecture.")
-                        .contact(new Contact().name("Martin Mueller")))
+                        .description("Spring Boot API for the React frontend using Clean Architecture.")
+                        .contact(new Contact().name("AsterixParser Team")))
                 .addServersItem(new Server().url("http://localhost:8080"));
     }
 }

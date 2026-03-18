@@ -1,4 +1,4 @@
-# TestJava1
+# AsterixParser
 
 Local startup for the ASTERIX integration:
 
@@ -27,3 +27,20 @@ Notes:
 - Upload endpoint: `POST http://localhost:8080/api/asterix/analyze`
 - Sample list: `GET http://localhost:8080/api/asterix/samples`
 - Sample analysis: `POST http://localhost:8080/api/asterix/samples/{sampleId}/analyze`
+
+## Frontend (React)
+
+The frontend is a React + TypeScript app (Vite) located in [frontend](./frontend).
+
+- Tech stack: React 18, TypeScript, Vite
+- Architecture: Clean Architecture style with `domain`, `application`, `infrastructure`, and `presentation` layers
+- Dev server: `http://localhost:5173`
+- Backend API base URL: `http://localhost:8080/api`
+
+Run frontend only:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```

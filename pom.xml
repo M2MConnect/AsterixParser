@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>de.martinmueller</groupId>
-    <artifactId>testjava1</artifactId>
+    <artifactId>asterixparser</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>testjava1</name>
+    <name>AsterixParser</name>
     <description>Clean Architecture backend with Spring Boot and Swagger</description>
 
     <properties>
