@@ -1,8 +1,8 @@
-# React Frontend mit Clean Architecture
+# React Frontend with Clean Architecture
 
-Dieses Verzeichnis ist eine eigenständige React-Frontend-Basis, getrennt vom bestehenden Java-Code im Projekt.
+This directory is an independent React frontend base, separated from the existing Java code in the project.
 
-## Struktur
+## Structure
 
 ```text
 frontend/
@@ -13,14 +13,14 @@ frontend/
     presentation/
 ```
 
-## Abhängigkeitsregel
+## Dependency Rule
 
-- `presentation` darf `application` verwenden.
-- `application` darf `domain` verwenden.
-- `infrastructure` implementiert Verträge aus `domain`.
-- `domain` kennt keine React-, HTTP- oder Framework-Details.
+- `presentation` may use `application`.
+- `application` may use `domain`.
+- `infrastructure` implements contracts from `domain`.
+- `domain` has no React, HTTP, or framework details.
 
-## Start
+## Run
 
 ```bash
 mvn spring-boot:run
@@ -30,10 +30,10 @@ npm install
 npm run dev
 ```
 
-Danach spricht das Frontend mit dem Backend unter `http://localhost:8080/api`.
-Swagger UI liegt unter `http://localhost:8080/swagger-ui/index.html`.
+After that, the frontend communicates with the backend at `http://localhost:8080/api`.
+Swagger UI is available at `http://localhost:8080/swagger-ui/index.html`.
 
-## Nächste sinnvolle Schritte
+## Next Useful Steps
 
-- Feature-Module ergänzen, zum Beispiel `auth`, `users` oder `orders`.
-- Bei wachsender App pro Feature eigene Unterordner in allen Schichten anlegen.
+- Add feature modules such as `auth`, `users`, or `orders`.
+- As the app grows, create feature-specific subfolders across all layers.
