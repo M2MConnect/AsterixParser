@@ -141,22 +141,49 @@ table {
   position: relative;
   z-index: 1;
   margin-top: 16px;
-  padding: 16px;
+  padding: 12px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-.sample-panel__header {
+.sample-accordion {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 12px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
   color: #eaf3fb;
+  text-align: left;
+  cursor: pointer;
 }
 
-.sample-panel__header span {
+.sample-accordion__title {
+  font-weight: 700;
+}
+
+.sample-accordion__meta {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.sample-accordion__icon {
+  margin-left: 4px;
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.sample-accordion__icon--open {
+  transform: rotate(180deg);
+}
+
+.sample-accordion__meta span {
   color: #c9d9e8;
   font-size: 0.9rem;
 }
@@ -164,6 +191,29 @@ table {
 .sample-list {
   display: grid;
   gap: 10px;
+  margin-top: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
+.sample-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sample-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sample-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 210, 140, 0.55);
+}
+
+.sample-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 210, 140, 0.78);
 }
 
 .sample-button {
@@ -396,6 +446,29 @@ table {
   padding: 18px 20px;
   background: linear-gradient(135deg, #10314d, #1c5f88);
   color: #f6fbff;
+}
+
+.cat-head--accordion {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cat-head__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cat-head__icon {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.cat-head__icon--open {
+  transform: rotate(180deg);
 }
 
 .cat-kicker {

@@ -23,6 +23,7 @@ export function DashboardPage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState("No file selected.");
   const [showFspecDetails, setShowFspecDetails] = useState(false);
+  const [isSamplePanelOpen, setIsSamplePanelOpen] = useState(false);
   const [categoryPage, setCategoryPage] = useState(1);
   const { data, isLoading, error, analyze, analyzeSample, getCategoryPage } = useAsterixAnalysis();
   const samples = useAsterixSamples();
@@ -80,25 +81,39 @@ export function DashboardPage() {
           </label>
         </div>
         <div className="sample-panel">
-          <div className="sample-panel__header">
-            <strong>Sample files in the Java project</strong>
-            {samples.isLoading && <span>loading...</span>}
-            {samples.error && <span>{samples.error}</span>}
-          </div>
-          <div className="sample-list">
-            {samples.data.map((sample) => (
-              <button
-                key={sample.id}
-                className="sample-button"
-                type="button"
-                onClick={() => handleSampleAnalyze(sample)}
-                disabled={isLoading}
-              >
-                <span>{sample.fileName}</span>
-                <small>{formatNumber(sample.fileSizeBytes)} Bytes | {sample.description}</small>
-              </button>
-            ))}
-          </div>
+          <button
+            className="sample-accordion"
+            type="button"
+            onClick={() => setIsSamplePanelOpen((current) => !current)}
+            aria-expanded={isSamplePanelOpen}
+            aria-controls="sample-files-panel"
+          >
+            <span className="sample-accordion__title">Sample files</span>
+            <span className="sample-accordion__meta">
+              {samples.isLoading && <span>loading...</span>}
+              {samples.error && <span>{samples.error}</span>}
+              {!samples.isLoading && !samples.error && <span>{samples.data.length} available</span>}
+            </span>
+            <span className={`sample-accordion__icon${isSamplePanelOpen ? " sample-accordion__icon--open" : ""}`}>
+              ▾
+            </span>
+          </button>
+          {isSamplePanelOpen && (
+            <div className="sample-list" id="sample-files-panel">
+              {samples.data.map((sample) => (
+                <button
+                  key={sample.id}
+                  className="sample-button"
+                  type="button"
+                  onClick={() => handleSampleAnalyze(sample)}
+                  disabled={isLoading}
+                >
+                  <span>{sample.fileName}</span>
+                  <small>{formatNumber(sample.fileSizeBytes)} Bytes | {sample.description}</small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -291,6 +306,7 @@ function CategoryCard({
   const [totalRecordPages, setTotalRecordPages] = useState(category.totalPages);
   const [pageSize, setPageSize] = useState(category.pageSize);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [pageCache, setPageCache] = useState<Record<number, AsterixRecordAnalysis[]>>({
     [category.currentPage]: category.records
   });
@@ -333,58 +349,75 @@ function CategoryCard({
 
   return (
     <section className="cat-card">
-      <div className="cat-head">
+      <button
+        className="cat-head cat-head--accordion"
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+        aria-controls={`category-panel-${category.categoryKey}`}
+      >
         <div>
           <p className="cat-kicker">Category</p>
           <h3>CAT{category.categoryKey}</h3>
         </div>
-        <div className="cat-badge">{formatNumber(category.count)} Records</div>
-      </div>
-
-      <div className="cat-meta">
-        <div>
-          <span>Description</span>
-          <strong>{category.description}</strong>
+        <div className="cat-head__actions">
+          <div className="cat-badge">{formatNumber(category.count)} Records</div>
+          <span className={`cat-head__icon${isOpen ? " cat-head__icon--open" : ""}`}>▾</span>
         </div>
-        <div>
-          <span>Edition</span>
-          <strong>{category.defaultEdition}</strong>
-        </div>
-        <div>
-          <span>Definition</span>
-          <strong>{category.definitionFileName}</strong>
-        </div>
-        <div>
-          <span>UAP-Items</span>
-          <strong>{category.uapItems || "-"}</strong>
-        </div>
-      </div>
+      </button>
 
-      <div className="record-list">
-        {category.count > pageSize && (
-          <PaginationBar
-            label={`Records CAT${category.categoryKey}`}
-            currentPage={recordPage}
-            totalPages={totalRecordPages}
-            onPageChange={handleRecordPageChange}
-            isLoading={isPageLoading}
-          />
-        )}
+      {isOpen && (
+        <div id={`category-panel-${category.categoryKey}`}>
+          <div className="cat-meta">
+            <div>
+              <span>Description</span>
+              <strong>{category.description}</strong>
+            </div>
+            <div>
+              <span>Edition</span>
+              <strong>{category.defaultEdition}</strong>
+            </div>
+            <div>
+              <span>Definition</span>
+              <strong>{category.definitionFileName}</strong>
+            </div>
+            <div>
+              <span>UAP-Items</span>
+              <strong>{category.uapItems || "-"}</strong>
+            </div>
+          </div>
 
-        {records.map((record) => (
-          <RecordCard key={`${category.categoryKey}-${record.index}`} record={record} showFspecDetails={showFspecDetails} />
-        ))}
+          <div className="record-list">
+            {category.count > pageSize && (
+              <PaginationBar
+                label={`Records CAT${category.categoryKey}`}
+                currentPage={recordPage}
+                totalPages={totalRecordPages}
+                onPageChange={handleRecordPageChange}
+                isLoading={isPageLoading}
+              />
+            )}
 
-        {category.count > pageSize && (
-          <PaginationBar
-            label={`Records CAT${category.categoryKey}`}
-            currentPage={recordPage}
-            totalPages={totalRecordPages}
-            onPageChange={handleRecordPageChange}
-            isLoading={isPageLoading}
-          />
-        )}
-      </div>
+            {records.map((record) => (
+              <RecordCard
+                key={`${category.categoryKey}-${record.index}`}
+                record={record}
+                showFspecDetails={showFspecDetails}
+              />
+            ))}
+
+            {category.count > pageSize && (
+              <PaginationBar
+                label={`Records CAT${category.categoryKey}`}
+                currentPage={recordPage}
+                totalPages={totalRecordPages}
+                onPageChange={handleRecordPageChange}
+                isLoading={isPageLoading}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
