@@ -11,6 +11,18 @@ function Resolve-JavaHome {
         return $env:JAVA_HOME
     }
 
+    $adoptiumBase = "C:\Program Files\Eclipse Adoptium"
+    if (Test-Path $adoptiumBase) {
+        $adoptiumJdk = Get-ChildItem -Path $adoptiumBase -Directory -Filter "jdk-*" |
+            Sort-Object Name -Descending |
+            Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") } |
+            Select-Object -First 1
+
+        if ($adoptiumJdk) {
+            return $adoptiumJdk.FullName
+        }
+    }
+
     $candidates = @(
         "C:\Users\Martin.Mueller\.jdks\openjdk-25.0.2",
         "C:\Program Files\Eclipse Adoptium\jdk-21",
