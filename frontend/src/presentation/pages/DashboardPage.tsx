@@ -17,6 +17,8 @@ type ByteRow = {
   cells: Array<{ offset: number; value: number } | null>;
 };
 
+type UapSortMode = "id" | "bytePosition";
+
 const CATEGORIES_PER_PAGE = 4;
 
 export function DashboardPage() {
@@ -471,6 +473,35 @@ function RecordCard({
 }) {
   const byteRows = buildByteRows(record.rawBytes);
   const fspecLength = calculateFspecLength(record.rawBytes);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
+  const [selectedByteRange, setSelectedByteRange] = useState<{ start: number; end: number } | null>(null);
+
+  function handleUapItemSelect(item: AsterixUapItem) {
+    if (!hasByteRange(item)) {
+      setSelectedItemKey(null);
+      setSelectedByteRange(null);
+      return;
+    }
+
+    const itemKey = buildItemSelectionKey(item);
+    const isSameSelection = selectedItemKey === itemKey
+      && selectedByteRange?.start === item.startByteOffset
+      && selectedByteRange?.end === item.endByteOffset;
+
+    if (isSameSelection) {
+      setSelectedItemKey(null);
+      setSelectedByteRange(null);
+      return;
+    }
+
+    setSelectedItemKey(itemKey);
+    setSelectedByteRange({
+      start: item.startByteOffset,
+      end: item.endByteOffset
+    });
+    frameRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 
   return (
     <article className="record-card">
@@ -485,9 +516,14 @@ function RecordCard({
       <div className="legend">
         <span className="legend-chip legend-chip--header">Header</span>
         <span className="legend-chip legend-chip--fspec">FSPEC</span>
+        <span className="legend-chip legend-chip--selected">
+          {selectedByteRange
+            ? `Selected bytes ${selectedByteRange.start.toString(16).toUpperCase().padStart(2, "0")}-${selectedByteRange.end.toString(16).toUpperCase().padStart(2, "0")}`
+            : "Click a UAP item to highlight bytes"}
+        </span>
       </div>
 
-      <div className="frame-wrap">
+      <div className="frame-wrap" ref={frameRef}>
         <table className="frame">
           <thead>
             <tr>
@@ -507,7 +543,10 @@ function RecordCard({
                   }
 
                   return (
-                    <td className={getByteCellClass(cell.offset, fspecLength)} key={`${row.offset}-${cell.offset}`}>
+                    <td
+                      className={getByteCellClass(cell.offset, fspecLength, selectedByteRange)}
+                      key={`${row.offset}-${cell.offset}`}
+                    >
                       <div className="hex">{cell.value.toString(16).toUpperCase().padStart(2, "0")}</div>
                       <div className="dec">{cell.value}</div>
                     </td>
@@ -520,7 +559,7 @@ function RecordCard({
       </div>
 
       {showFspecDetails && <FspecTable octets={record.fspecOctets} />}
-      <UapTable items={record.uapItems} />
+      <UapTable items={record.uapItems} selectedItemKey={selectedItemKey} onItemSelect={handleUapItemSelect} />
     </article>
   );
 }
@@ -536,30 +575,70 @@ function FspecTable({ octets }: { octets: AsterixFspecOctet[] }) {
             <th>Hex</th>
             <th>Bin</th>
             <th>FX</th>
-            <th>Set bits</th>
+            <th>Definition</th>
           </tr>
         </thead>
         <tbody>
-          {octets.map((octet) => (
-            <tr key={octet.octetIndex}>
-              <td>{octet.octetIndex}</td>
-              <td>{octet.hexValue}</td>
-              <td>{octet.binaryValue}</td>
-              <td>{octet.fxValue}</td>
-              <td>{octet.setBits}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            {octets.map((octet) => (
+              <tr key={octet.octetIndex}>
+                <td>{octet.octetIndex}</td>
+                <td>{octet.hexValue}</td>
+                <td>{octet.binaryValue}</td>
+                <td>{octet.fxValue}</td>
+                <td>
+                  <div className="fspec-definition">
+                    {buildFspecDefinitionTokens(octet).map((token, index) => (
+                      <span
+                        key={`${octet.octetIndex}-${token.label}-${index}`}
+                        className={`fspec-token${token.isSet ? " fspec-token--set" : ""}${token.isSpecial ? " fspec-token--special" : ""}`}
+                      >
+                        {token.label}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
     </div>
   );
 }
 
-function UapTable({ items }: { items: AsterixUapItem[] }) {
+function UapTable({
+  items,
+  selectedItemKey,
+  onItemSelect
+}: {
+  items: AsterixUapItem[];
+  selectedItemKey: string | null;
+  onItemSelect: (item: AsterixUapItem) => void;
+}) {
+  const [sortMode, setSortMode] = useState<UapSortMode>("id");
+  const sortedItems = [...items].sort((left, right) => compareUapItems(left, right, sortMode));
+
   return (
     <div className="detail-panel">
-      <div className="detail-title">UAP Items</div>
-      {items.length === 0 ? (
+      <div className="detail-header">
+        <div className="detail-title">UAP Items</div>
+        <div className="sort-toggle" role="group" aria-label="Sort UAP items">
+          <button
+            className={`sort-toggle__button${sortMode === "id" ? " sort-toggle__button--active" : ""}`}
+            type="button"
+            onClick={() => setSortMode("id")}
+          >
+            Sort by ID
+          </button>
+          <button
+            className={`sort-toggle__button${sortMode === "bytePosition" ? " sort-toggle__button--active" : ""}`}
+            type="button"
+            onClick={() => setSortMode("bytePosition")}
+          >
+            Sort by Byte Position
+          </button>
+        </div>
+      </div>
+      {sortedItems.length === 0 ? (
         <p className="panel-copy">No UAP items decoded.</p>
       ) : (
         <table className="detail-table">
@@ -574,8 +653,12 @@ function UapTable({ items }: { items: AsterixUapItem[] }) {
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => (
-              <tr key={`${item.id}-${index}`}>
+            {sortedItems.map((item, index) => (
+              <tr
+                key={`${item.id}-${index}`}
+                className={selectedItemKey === buildItemSelectionKey(item) ? "detail-row detail-row--selected" : "detail-row"}
+                onClick={() => onItemSelect(item)}
+              >
                 <td>{item.id}</td>
                 <td>{item.name}</td>
                 <td>{item.comment}</td>
@@ -629,12 +712,15 @@ function calculateFspecLength(rawBytes: number[]) {
   return count;
 }
 
-function getByteCellClass(offset: number, fspecLength: number) {
+function getByteCellClass(offset: number, fspecLength: number, selectedByteRange: { start: number; end: number } | null) {
   let className = "byte-cell";
   if (offset <= 2) {
     className += " byte-cell--header";
   } else if (offset >= 3 && offset < 3 + fspecLength) {
     className += " byte-cell--fspec";
+  }
+  if (selectedByteRange && offset >= selectedByteRange.start && offset <= selectedByteRange.end) {
+    className += " byte-cell--selected";
   }
 
   return className;
@@ -653,6 +739,55 @@ function getStatusClass(status: string) {
     default:
       return "status-empty";
   }
+}
+
+function compareIds(left: string, right: string) {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+
+  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+}
+
+function compareUapItems(left: AsterixUapItem, right: AsterixUapItem, sortMode: UapSortMode) {
+  if (sortMode === "bytePosition") {
+    const leftOffset = left.startByteOffset >= 0 ? left.startByteOffset : Number.MAX_SAFE_INTEGER;
+    const rightOffset = right.startByteOffset >= 0 ? right.startByteOffset : Number.MAX_SAFE_INTEGER;
+    if (leftOffset !== rightOffset) {
+      return leftOffset - rightOffset;
+    }
+
+    if (left.endByteOffset !== right.endByteOffset) {
+      return left.endByteOffset - right.endByteOffset;
+    }
+  }
+
+  return compareIds(left.id, right.id);
+}
+
+function hasByteRange(item: AsterixUapItem) {
+  return item.startByteOffset >= 0 && item.endByteOffset >= item.startByteOffset && item.consumedBytes > 0;
+}
+
+function buildItemSelectionKey(item: AsterixUapItem) {
+  return `${item.id}:${item.startByteOffset}:${item.endByteOffset}`;
+}
+
+function buildFspecDefinitionTokens(octet: AsterixFspecOctet) {
+  const labels = octet.definition
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const presenceBits = octet.binaryValue.slice(0, 7).split("");
+
+  return labels.map((label, index) => ({
+    label,
+    isSet: presenceBits[index] === "1",
+    isSpecial: label === "FX" || label === "SP" || label === "RE" || label === "-"
+  }));
 }
 
 function formatNumber(value: number) {

@@ -186,6 +186,7 @@ public class AnalyzeAsterixFileUseCase {
             JsonNode categoryNode = findCategoryNode(cliResult.path("categories"), categoryKey);
             List<AsterixRecordAnalysis> records = buildRecords(
                     categoryNode == null ? null : categoryNode.path("previews"),
+                    categoryNode == null ? null : categoryNode.path("uap_octets"),
                     rawRecords,
                     startIndex,
                     safePageSize
@@ -220,7 +221,13 @@ public class AnalyzeAsterixFileUseCase {
         for (JsonNode categoryNode : categoriesNode) {
             String categoryKey = categoryNode.path("category_key").asText();
             List<RawAsterixRecord> rawCategoryRecords = recordsByCategory.getOrDefault(categoryKey, List.of());
-            List<AsterixRecordAnalysis> records = buildRecords(categoryNode.path("previews"), rawCategoryRecords, 0, pageSize);
+            List<AsterixRecordAnalysis> records = buildRecords(
+                    categoryNode.path("previews"),
+                    categoryNode.path("uap_octets"),
+                    rawCategoryRecords,
+                    0,
+                    pageSize
+            );
             String uapItems = collectCategoryItemIds(records);
             int totalPages = Math.max(1, (int) Math.ceil((double) rawCategoryRecords.size() / Math.max(1, pageSize)));
 
@@ -309,7 +316,13 @@ public class AnalyzeAsterixFileUseCase {
         return buckets;
     }
 
-    private List<AsterixRecordAnalysis> buildRecords(JsonNode previewsNode, List<RawAsterixRecord> rawRecords, int startIndex, int pageSize) {
+    private List<AsterixRecordAnalysis> buildRecords(
+            JsonNode previewsNode,
+            JsonNode uapOctetsNode,
+            List<RawAsterixRecord> rawRecords,
+            int startIndex,
+            int pageSize
+    ) {
         List<AsterixRecordAnalysis> records = new ArrayList<>();
         if (previewsNode == null || !previewsNode.isArray()) {
             return records;
@@ -329,7 +342,7 @@ public class AnalyzeAsterixFileUseCase {
                     decoded.path("remaining_bytes").asInt(0),
                     collectRecordItemIds(uapItems),
                     toUnsignedByteList(rawRecord.data()),
-                    buildFspecOctets(rawRecord.data()),
+                    buildFspecOctets(rawRecord.data(), uapOctetsNode),
                     uapItems
             ));
         }
@@ -359,13 +372,17 @@ public class AnalyzeAsterixFileUseCase {
 
         for (JsonNode itemNode : itemsNode) {
             String valuePreview = formatValue(itemNode.get("decoded"));
+            int startByteOffset = itemNode.path("start_byte_offset").asInt(-1);
             int consumedBytes = itemNode.path("consumed_bytes").asInt(0);
+            int endByteOffset = itemNode.path("end_byte_offset").asInt(startByteOffset + Math.max(0, consumedBytes) - 1);
             items.add(new AsterixUapItem(
                     safeText(itemNode.path("id").asText(null), "-"),
                     safeText(itemNode.path("name").asText(null), "-"),
                     safeText(itemNode.path("comment").asText(null), "-"),
                     valuePreview,
+                    startByteOffset,
                     consumedBytes,
+                    endByteOffset,
                     classifyStatus(itemNode, valuePreview, consumedBytes)
             ));
         }
@@ -428,27 +445,20 @@ public class AnalyzeAsterixFileUseCase {
         return joined.isBlank() ? "-" : joined;
     }
 
-    private List<AsterixFspecOctet> buildFspecOctets(byte[] bytes) {
+    private List<AsterixFspecOctet> buildFspecOctets(byte[] bytes, JsonNode uapOctetsNode) {
         List<AsterixFspecOctet> octets = new ArrayList<>();
         int offset = 3;
         int octetIndex = 1;
 
         while (offset < bytes.length) {
             int value = Byte.toUnsignedInt(bytes[offset++]);
-            List<String> setBits = new ArrayList<>();
-            for (int bit = 7; bit >= 1; bit--) {
-                if (((value >> bit) & 1) == 1) {
-                    setBits.add("b" + (bit + 1));
-                }
-            }
-
             int fx = value & 1;
             octets.add(new AsterixFspecOctet(
                     octetIndex++,
                     "%02X".formatted(value),
                     String.format("%8s", Integer.toBinaryString(value)).replace(' ', '0'),
                     fx,
-                    setBits.isEmpty() ? "-" : String.join(", ", setBits)
+                    buildFspecDefinition(octetIndex - 1, uapOctetsNode)
             ));
 
             if (fx == 0) {
@@ -457,6 +467,24 @@ public class AnalyzeAsterixFileUseCase {
         }
 
         return octets;
+    }
+
+    private String buildFspecDefinition(int octetIndex, JsonNode uapOctetsNode) {
+        if (uapOctetsNode == null || !uapOctetsNode.isArray() || octetIndex < 1 || octetIndex > uapOctetsNode.size()) {
+            return "-";
+        }
+
+        JsonNode octetNode = uapOctetsNode.get(octetIndex - 1);
+        if (octetNode == null || !octetNode.isArray() || octetNode.isEmpty()) {
+            return "-";
+        }
+
+        List<String> itemDefinitions = new ArrayList<>();
+        for (JsonNode itemNode : octetNode) {
+            itemDefinitions.add(safeText(itemNode.asText(null), "-"));
+        }
+
+        return itemDefinitions.isEmpty() ? "-" : String.join(", ", itemDefinitions);
     }
 
     private List<Integer> toUnsignedByteList(byte[] bytes) {

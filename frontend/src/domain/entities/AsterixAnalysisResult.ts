@@ -12,7 +12,7 @@ export interface AsterixFspecOctet {
   hexValue: string;
   binaryValue: string;
   fxValue: number;
-  setBits: string;
+  definition: string;
 }
 
 export interface AsterixUapItem {
@@ -20,7 +20,9 @@ export interface AsterixUapItem {
   name: string;
   comment: string;
   valuePreview: string;
+  startByteOffset: number;
   consumedBytes: number;
+  endByteOffset: number;
   status: string;
 }
 

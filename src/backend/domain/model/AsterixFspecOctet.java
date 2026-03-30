@@ -5,6 +5,6 @@ public record AsterixFspecOctet(
         String hexValue,
         String binaryValue,
         int fxValue,
-        String setBits
+        String definition
 ) {
 }

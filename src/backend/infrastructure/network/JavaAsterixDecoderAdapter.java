@@ -80,6 +80,7 @@ public class JavaAsterixDecoderAdapter implements AsterixDecoderPort {
         categoryNode.put("description", meta == null || meta.comment == null ? "" : meta.comment);
         categoryNode.put("default_edition", meta == null || meta.defaultEdition == null ? "" : meta.defaultEdition);
         categoryNode.put("default_definition_file", meta == null || meta.defaultDefinitionFile == null ? "" : meta.defaultDefinitionFile);
+        categoryNode.set("uap_octets", buildUapOctetsNode(definition));
 
         ArrayNode previews = categoryNode.putArray("previews");
         int max = Math.min(records.size(), previewLimit);
@@ -129,7 +130,10 @@ public class JavaAsterixDecoderAdapter implements AsterixDecoderPort {
             itemNode.put("comment", itemObject.path("comment").asText(""));
             int before = offsetRef[0];
             JsonNode value = decodeItem(itemObject, record.data, offsetRef);
-            itemNode.put("consumed_bytes", Math.max(0, offsetRef[0] - before));
+            int consumedBytes = Math.max(0, offsetRef[0] - before);
+            itemNode.put("start_byte_offset", consumedBytes > 0 ? before : -1);
+            itemNode.put("consumed_bytes", consumedBytes);
+            itemNode.put("end_byte_offset", consumedBytes > 0 ? offsetRef[0] - 1 : -1);
             itemNode.set("decoded", value == null ? JsonNodeFactory.instance.nullNode() : value);
             itemsNode.add(itemNode);
         }
@@ -413,6 +417,22 @@ public class JavaAsterixDecoderAdapter implements AsterixDecoderPort {
             builder.append("%02X".formatted(Byte.toUnsignedInt(value)));
         }
         return builder.toString();
+    }
+
+    private ArrayNode buildUapOctetsNode(JasterixRecordDefinition definition) {
+        ArrayNode octetsNode = JsonNodeFactory.instance.arrayNode();
+        if (definition == null) {
+            return octetsNode;
+        }
+
+        for (List<String> uapGroup : definition.uapGroups) {
+            ArrayNode octetNode = octetsNode.addArray();
+            for (String itemId : uapGroup) {
+                octetNode.add(itemId);
+            }
+        }
+
+        return octetsNode;
     }
 
     private static final class JasterixCatalog {
