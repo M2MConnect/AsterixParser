@@ -69,6 +69,8 @@ Unblock-File .\start-frontend.ps1
 - Included samples contain large `.ast` files and the full `jasterix` `.bin` examples from `testdata\jasterix`.
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/api-docs`
 - Backend upload limit: `1GB`
 - Preview limit per category page: `10` records via `asterix.decoder.preview-limit`
 - Upload endpoint: `POST http://localhost:8080/api/asterix/analyze`

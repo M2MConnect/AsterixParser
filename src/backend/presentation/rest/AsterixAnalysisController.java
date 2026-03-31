@@ -8,7 +8,12 @@ import backend.domain.model.AsterixCategoryPage;
 import backend.domain.model.AsterixSampleFile;
 import backend.infrastructure.storage.AsterixAnalysisSession;
 import backend.infrastructure.storage.AsterixAnalysisSessionStore;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,6 +57,11 @@ public class AsterixAnalysisController {
 
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Liefert die im Java-Projekt eingebundenen ASTERIX-Beispiel-Dateien.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Sample-Liste erfolgreich geladen.",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AsterixSampleFile.class)))
+    )
     public List<AsterixSampleFile> listSamples() {
         return listAsterixSamplesUseCase.execute();
     }
@@ -62,6 +72,12 @@ public class AsterixAnalysisController {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @Operation(summary = "Analysiert eine ASTERIX-Datei ueber den integrierten Java-Decoder.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Datei erfolgreich analysiert.",
+            content = @Content(schema = @Schema(implementation = AsterixAnalysisResult.class))
+    )
+    @ApiResponse(responseCode = "400", description = "Es wurde keine gueltige Datei hochgeladen.")
     public AsterixAnalysisResult analyze(@RequestPart("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Bitte eine Datei hochladen.");
@@ -87,16 +103,33 @@ public class AsterixAnalysisController {
 
     @PostMapping(value = "/samples/{sampleId}/analyze", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Analysiert eine eingebaute ASTERIX-Beispiel-Datei.")
-    public AsterixAnalysisResult analyzeSample(@PathVariable String sampleId) {
+    @ApiResponse(
+            responseCode = "200",
+            description = "Sample erfolgreich analysiert.",
+            content = @Content(schema = @Schema(implementation = AsterixAnalysisResult.class))
+    )
+    public AsterixAnalysisResult analyzeSample(
+            @Parameter(description = "Interne Kennung der Sample-Datei.", example = "cat021ed2.1")
+            @PathVariable String sampleId
+    ) {
         return analyzeAsterixSampleUseCase.execute(sampleId);
     }
 
     @GetMapping(value = "/analyses/{analysisId}/categories/{categoryKey}/records", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Liefert eine paginierte Record-Seite fuer eine Kategorie.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Datenseite erfolgreich geladen.",
+            content = @Content(schema = @Schema(implementation = AsterixCategoryPage.class))
+    )
     public AsterixCategoryPage getCategoryRecordsPage(
+            @Parameter(description = "Analyse-ID aus einer vorherigen Analyse.", example = "5f2f5d4e-1b13-4b38-b4fa-e49f6d0dfe21")
             @PathVariable String analysisId,
+            @Parameter(description = "Kategorie-Schluessel, z. B. CAT021.", example = "CAT021")
             @PathVariable String categoryKey,
+            @Parameter(description = "Seitennummer ab 1.", example = "1")
             @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Anzahl der Records pro Seite.", example = "10")
             @RequestParam(defaultValue = "10") int size
     ) {
         AsterixAnalysisSession session = sessionStore.get(analysisId);
